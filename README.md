@@ -25,6 +25,11 @@ Se puede mover con el mouse: arrastra el botón del robot o la barra superior de
 
 El código fuente del asistente está en `src/asistente.js`; ya va incluido dentro de `apps-script/Index.html`, así que para publicarlo solo se copian `Codigo.gs` e `Index.html`.
 
+## Numeración (N°)
+
+- Botón **"Numerar del 1 al …"** en Base de datos (aparece cuando hay registros sin N° o con N° repetido). También en Calidad de datos y en el menú de la hoja: **Gestor de Locadores → Renumerar N° de orden**.
+- Cada locador nuevo recibe automáticamente el número siguiente al último registrado.
+
 ## Acceso
 
 Solo pueden usarlo las personas con la hoja de Google compartida como **Editor**. Cada cambio queda registrado con el correo de quien lo hizo.

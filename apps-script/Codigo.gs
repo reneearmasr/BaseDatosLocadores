@@ -37,9 +37,35 @@ function doGet() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Gestor de Locadores')
     .addItem('Preparar hojas del repositorio', 'prepararRepositorio')
+    .addItem('Renumerar N° de orden (1, 2, 3…)', 'renumerarDesdeMenu')
     .addToUi();
 }
 function prepararRepositorio() { setup_(); }
+function renumerarDesdeMenu() { var o = JSON.parse(renumerar()); SpreadsheetApp.getActiveSpreadsheet().toast('Se numeraron ' + o.total + ' registros del 1 al ' + o.total + '.', 'Gestor de Locadores'); }
+
+/* Numera la columna N° de 1 hasta el último registro, en el orden actual de la hoja BASE */
+function renumerar() {
+  var lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    var b = setup_();
+    var last = b.getLastRow();
+    var total = 0;
+    if (last > 1) {
+      var ids = b.getRange(2, 1, last - 1, 1).getValues();
+      var nums = []; var k = 0;
+      ids.forEach(function (r) { nums.push([r[0] === '' || r[0] === null ? '' : String(++k)]); });
+      b.getRange(2, 2, nums.length, 1).setNumberFormat('@').setValues(nums);
+      total = k;
+    }
+    var user = email_();
+    var hs = ss_().getSheetByName('HISTORIAL');
+    hs.getRange(hs.getLastRow() + 1, 1, 1, H_HEAD.length).setValues([[String(Date.now()), now_(), user, 'Corrección', '', 'Toda la base', '', 'N°', '', '1 al ' + total, 'Renumeración del N° de orden (1…n en el orden actual)']]);
+    props_().setProperty('maxN', String(total));
+    return JSON.stringify({ ok: true, total: total, version: bump_(user) });
+  } finally { lock.releaseLock(); }
+}
+function props_() { return PropertiesService.getDocumentProperties(); }
 
 /* Si alguien edita la hoja BASE a mano, la app de los demás se entera y se recarga */
 function onEdit(e) {
@@ -190,6 +216,11 @@ function commit(p) {
     ids.forEach(function (id, i) { if (id) { idRow[id] = i + 2; if (id > maxId) maxId = id; } });
     var props = PropertiesService.getDocumentProperties();
     maxId = Math.max(maxId, Number(props.getProperty('maxId')) || 0);
+    var nVals = last > 1 ? b.getRange(2, 2, last - 1, 1).getValues() : [];
+    var nSet = {}; var maxN = 0;
+    nVals.forEach(function (r) { var n = Number(r[0]); if (n) { nSet[n] = true; if (n > maxN) maxN = n; } });
+    maxN = Math.max(maxN, Number(props.getProperty('maxN')) || 0);
+    var nMap = {};
     var idMap = {}, warn = [], adds = [], dels = [];
     var ops = p.ops || [];
     var updOps = ops.filter(function (o) { return o.op === 'upd'; });
@@ -223,11 +254,15 @@ function commit(p) {
     ops.forEach(function (op) {
       if (op.op === 'add') {
         var id = ++maxId; idMap[op.rec._id] = id;
-        var rec = Object.assign({}, op.rec, { _id: id, _upd: ts, _by: user });
+        var nn = Number(op.rec.n);
+        if (!nn || nSet[nn]) { nn = ++maxN; } else if (nn > maxN) { maxN = nn; }
+        nSet[nn] = true; nMap[op.rec._id] = nn;
+        var rec = Object.assign({}, op.rec, { _id: id, n: String(nn), _upd: ts, _by: user });
         adds.push(KEYS.map(function (k) { return cellV_(k, rec[k]); }));
       } else if (op.op === 'addMany') {
         (op.rows || []).forEach(function (r0) {
           var id = ++maxId;
+          var n0 = Number(r0.n); if (n0) { nSet[n0] = true; if (n0 > maxN) maxN = n0; }
           var rec = Object.assign({}, r0, { _id: id, _upd: ts, _by: user });
           adds.push(KEYS.map(function (k) { return cellV_(k, rec[k]); }));
         });
@@ -236,7 +271,7 @@ function commit(p) {
         if (row) dels.push(row); else warn.push('El registro ' + op.id + ' ya no existía');
       } else if (op.op === 'clear') {
         if (last > 1) b.getRange(2, 1, last - 1, KEYS.length).clearContent();
-        idRow = {}; maxId = 0; last = 1;
+        idRow = {}; maxId = 0; last = 1; nSet = {}; maxN = 0;
       }
     });
     if (adds.length) {
@@ -266,8 +301,9 @@ function commit(p) {
       hs.getRange(hs.getLastRow() + 1, 1, hist.length, H_HEAD.length).setValues(hist);
     }
     props.setProperty('maxId', String(maxId));
+    props.setProperty('maxN', String(maxN));
     var v = bump_(user);
-    return JSON.stringify({ ok: true, version: v, idMap: idMap, warn: warn, ts: ts, user: user });
+    return JSON.stringify({ ok: true, version: v, idMap: idMap, nMap: nMap, warn: warn, ts: ts, user: user });
   } finally {
     lock.releaseLock();
   }
