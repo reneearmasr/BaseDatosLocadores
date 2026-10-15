@@ -41,10 +41,10 @@ function onOpen() {
     .addToUi();
 }
 function prepararRepositorio() { setup_(); }
-function renumerarDesdeMenu() { var o = JSON.parse(renumerar()); SpreadsheetApp.getActiveSpreadsheet().toast('Se numeraron ' + o.total + ' registros del 1 al ' + o.total + '.', 'Gestor de Locadores'); }
+function renumerarDesdeMenu() { var o = JSON.parse(renumerar(Session.getEffectiveUser().getEmail())); SpreadsheetApp.getActiveSpreadsheet().toast('Se numeraron ' + o.total + ' registros del 1 al ' + o.total + '.', 'Gestor de Locadores'); }
 
 /* Numera la columna N° de 1 hasta el último registro, en el orden actual de la hoja BASE */
-function renumerar() {
+function renumerar(usuario) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
@@ -58,7 +58,7 @@ function renumerar() {
       b.getRange(2, 2, nums.length, 1).setNumberFormat('@').setValues(nums);
       total = k;
     }
-    var user = email_();
+    var user = email_(usuario);
     var hs = ss_().getSheetByName('HISTORIAL');
     hs.getRange(hs.getLastRow() + 1, 1, 1, H_HEAD.length).setValues([[String(Date.now()), now_(), user, 'Corrección', '', 'Toda la base', '', 'N°', '', '1 al ' + total, 'Renumeración del N° de orden (1…n en el orden actual)']]);
     props_().setProperty('maxN', String(total));
@@ -78,11 +78,15 @@ function onEdit(e) {
 
 /* ---------- Utilidades ---------- */
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById('1x0Drh819dfaFWmyN-b0W8dT2S1XHmoC6c004bbfJoMM'); }
-function email_() {
-  var e = '';
-  try { e = Session.getActiveUser().getEmail(); } catch (x) {}
-  if (!e) { try { e = Session.getEffectiveUser().getEmail(); } catch (x) {} }
-  return e || 'usuario';
+/* Usuario real que usa la app. Si Google no lo revela (implementación "Ejecutar como: Yo"),
+   se usa el correo que la persona escribió en la app, marcado como "sin verificar".
+   Nunca se atribuye el cambio al propietario de la hoja por defecto. */
+function activo_() { try { return Session.getActiveUser().getEmail() || ''; } catch (x) { return ''; } }
+function email_(declarado) {
+  var e = activo_();
+  if (e) return e;
+  declarado = String(declarado || '').trim().slice(0, 80);
+  return declarado ? declarado + ' (sin verificar)' : 'usuario no identificado';
 }
 function now_() { return Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm:ss'); }
 function ver_() { return PropertiesService.getDocumentProperties().getProperty('ver') || '0'; }
@@ -138,7 +142,7 @@ function setup_() {
     t.getRange(2, 4, t.getMaxRows() - 1, 1).setNumberFormat('#,##0.00');
     t.getRange(1, 1, 1, T_HEAD.length).setValues([T_HEAD]).setFontWeight('bold').setBackground('#002060').setFontColor('#ffffff');
     t.setFrozenRows(1); t.setColumnWidth(2, 380); t.setColumnWidth(3, 480); t.setColumnWidth(4, 170);
-    t.getRange(2, 1, TECHOS_INICIALES.length, 4).setValues(TECHOS_INICIALES);
+    if (TECHOS_INICIALES.length) t.getRange(2, 1, TECHOS_INICIALES.length, 4).setValues(TECHOS_INICIALES);
   }
   // borrar la hoja vacía por defecto
   ss.getSheets().forEach(function (s) {
@@ -162,7 +166,7 @@ function getData() {
       rows.push(o);
     }
   }
-  return JSON.stringify({ rows: rows, hist: getHistory_(3000), techos: getTechos_(), version: ver_(), user: email_(),
+  return JSON.stringify({ rows: rows, hist: getHistory_(3000), techos: getTechos_(), version: ver_(), user: activo_(), identificado: !!activo_(),
     title: ss_().getName(), url: ss_().getUrl() });
 }
 function getHistory_(max) {
@@ -181,7 +185,7 @@ function getTechos_() {
     .map(function (r) { return [String(r[0]), String(r[1]).trim(), String(r[2]).trim(), Number(r[3]) || 0]; });
 }
 /* Reemplaza los techos (rows = [[nivel, organo, uo, techo], ...]) */
-function setTechos(rows) {
+function setTechos(rows, usuario) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
@@ -193,7 +197,7 @@ function setTechos(rows) {
       if (rows.length + 1 > t.getMaxRows()) t.insertRowsAfter(t.getMaxRows(), rows.length + 10);
       t.getRange(2, 1, rows.length, 4).setValues(rows.map(function (r) { return [String(r[0]), String(r[1]), String(r[2] || ''), Number(r[3]) || 0]; }));
     }
-    var user = email_();
+    var user = email_(usuario);
     var hs = ss_().getSheetByName('HISTORIAL');
     hs.getRange(hs.getLastRow() + 1, 1, 1, H_HEAD.length).setValues([[String(Date.now()), now_(), user, 'Techos', '', 'Techos por área usuaria', '', '', '', rows.length + ' áreas', 'Actualización de techos']]);
     return JSON.stringify({ ok: true, version: bump_(user) });
@@ -209,7 +213,7 @@ function commit(p) {
   lock.waitLock(30000);
   try {
     var b = setup_();
-    var user = email_(), ts = now_();
+    var user = email_(p.usuario), ts = now_();
     var last = b.getLastRow();
     var ids = last > 1 ? b.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return Number(r[0]); }) : [];
     var idRow = {}; var maxId = 0;
