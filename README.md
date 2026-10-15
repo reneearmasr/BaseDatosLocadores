@@ -21,7 +21,7 @@ Ejemplos de preguntas:
 - "Datos de Rosa Quispe", un DNI, "Cambios de 40000274", "Últimos cambios de hoy"
 - "Problemas de calidad de datos", "¿Cómo registro un nuevo locador?"
 
-Las respuestas permiten abrir la ficha del locador, verlo en la Base de datos o exportar a Excel. Si hay áreas que exceden su techo, el botón muestra un aviso.
+Se puede mover con el mouse: arrastra el botón del robot o la barra superior del chat; recuerda dónde lo dejaste (doble clic en la barra lo devuelve a su lugar). Las respuestas permiten abrir la ficha del locador, verlo en la Base de datos o exportar a Excel. Si hay áreas que exceden su techo, el botón muestra un aviso.
 
 El código fuente del asistente está en `src/asistente.js`; ya va incluido dentro de `apps-script/Index.html`, así que para publicarlo solo se copian `Codigo.gs` e `Index.html`.
 

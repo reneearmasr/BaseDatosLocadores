@@ -609,7 +609,12 @@ function crearAsistenteLoc(){
 .atb-click{cursor:pointer;border-radius:8px;padding:3px 4px;margin:-3px -4px}
 .atb-click:hover{background:#F2F5F9}
 .atb-click:hover .atb-row-h b{color:#0B7A68;text-decoration:underline}
-.atb-m .atb-glosa i{color:var(--muted,#5A6B82)}`;
+.atb-m .atb-glosa i{color:var(--muted,#5A6B82)}
+.atb-toggle{touch-action:none;cursor:grab}
+.atb-head{cursor:move;touch-action:none;user-select:none}
+.atb-head button{cursor:pointer}
+body.atb-moviendo,body.atb-moviendo *{cursor:grabbing !important;user-select:none !important}
+body.atb-moviendo .atb-panel,body.atb-moviendo .atb-teaser{transition:none !important}`;
   document.head.appendChild(st);
 })();
 
@@ -636,7 +641,7 @@ function crearAsistenteLoc(){
     var A = crearAsistenteLoc();
     var X = techoAreas().filter(function(a){ return a.estado === 'Excede'; });
     var btn = document.createElement('button');
-    btn.className = 'atb-toggle'; btn.type = 'button';
+    btn.className = 'atb-toggle'; btn.type = 'button'; btn.title = 'Clic para abrir · arrastra para mover';
     btn.setAttribute('aria-label', 'Abrir asistente de locadores'); btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span class="atb-ico">' + ROBOT() + '</span><span class="atb-lbl">Pregúntale a la base</span>' +
       (X.length ? '<span class="atb-badge" aria-label="' + X.length + ' áreas exceden su techo">' + X.length + '</span>' : '') +
@@ -649,7 +654,7 @@ function crearAsistenteLoc(){
       : '<b>👋 ¿Buscas a un locador?</b>Pregúntame por nombre, DNI, área, techo o montos.<button type="button" aria-label="Ocultar mensaje">×</button>';
     var p = document.createElement('div');
     p.className = 'atb-panel'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Asistente de locadores');
-    p.innerHTML = '<div class="atb-head"><div class="atb-av">' + ROBOT() + '</div><div><b>Asistente de locadores</b><span><i></i><em class="atb-fec" style="font-style:normal"></em></span></div>' +
+    p.innerHTML = '<div class="atb-head" title="Arrastra para mover · doble clic para volver a su lugar"><div class="atb-av">' + ROBOT() + '</div><div><b>Asistente de locadores</b><span><i></i><em class="atb-fec" style="font-style:normal"></em></span></div>' +
       '<div class="atb-hb"><button class="atb-home" type="button" title="Inicio" aria-label="Volver al inicio">' + SV('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>') + '</button>' +
       '<button class="atb-x" type="button" title="Cerrar" aria-label="Cerrar">' + SV('<path d="M6 6l12 12M18 6L6 18"/>') + '</button></div></div>' +
       '<div class="atb-msgs" aria-live="polite"></div>' +
@@ -705,6 +710,7 @@ function crearAsistenteLoc(){
       p.classList.add('abierto'); btn.classList.add('abierto');
       btn.setAttribute('aria-label', 'Cerrar asistente de locadores'); btn.setAttribute('aria-expanded', 'true');
       if (!iniciado){ iniciado = true; bienvenida(); }
+      ubicar();
       setTimeout(function(){ inp.focus(); }, 60);
     }
     function cerrar(sinFoco){
@@ -718,14 +724,62 @@ function crearAsistenteLoc(){
     }
     msgs.addEventListener('click', function(ev){ var el = ev.target.closest('[data-acc]'); if (el) ejecutar(el); });
     msgs.addEventListener('keydown', function(ev){ if (ev.key === 'Enter'){ var el = ev.target.closest('[data-acc]'); if (el){ ev.preventDefault(); ejecutar(el); } } });
-    btn.onclick = function(){ p.classList.contains('abierto') ? cerrar() : abrir(); };
+    /* ---------- mover con el mouse (botón y barra superior del chat) ---------- */
+    var POS = (function(){ try { var o = JSON.parse(leer('atbl_pos') || 'null'); return o && isFinite(o.r) && isFinite(o.b) ? o : null; } catch (e) { return null; } })();
+    function ubicar(){
+      var vw = window.innerWidth, vh = window.innerHeight;
+      if (!POS){ ['right','bottom','left','top'].forEach(function(k){ btn.style[k] = ''; p.style[k] = ''; tz.style[k] = ''; }); return; }
+      var bw = btn.offsetWidth || 56, bh = btn.offsetHeight || 56;
+      POS.r = Math.max(8, Math.min(vw - bw - 8, POS.r)); POS.b = Math.max(8, Math.min(vh - bh - 8, POS.b));
+      btn.style.right = POS.r + 'px'; btn.style.bottom = POS.b + 'px';
+      var bl = vw - POS.r - bw, bt = vh - POS.b - bh, br = vw - POS.r;
+      function junto(el, w, h){
+        var top = bt - 12 - h;
+        if (top < 8) top = (bt + bh + 12 + h <= vh - 8) ? bt + bh + 12 : Math.max(8, vh - h - 8);
+        var left = Math.max(8, Math.min(vw - w - 8, br - w));
+        if (top < bt + bh && top + h > bt && left < br && left + w > bl){ left = bl - w - 12 >= 8 ? bl - w - 12 : Math.min(vw - w - 8, br + 12); }
+        el.style.right = 'auto'; el.style.bottom = 'auto'; el.style.left = left + 'px'; el.style.top = top + 'px';
+      }
+      if (vw > 560) junto(p, p.offsetWidth || 390, p.offsetHeight || Math.min(600, vh - 116));
+      else ['right','bottom','left','top'].forEach(function(k){ p.style[k] = ''; });
+      junto(tz, tz.offsetWidth || 250, tz.offsetHeight || 70);
+    }
+    var arrastrado = false;
+    function arrastrable(el, esAsa){
+      el.addEventListener('pointerdown', function(ev){
+        if (ev.button !== 0 || !esAsa(ev)) return;
+        var r0 = btn.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY, mov = false;
+        var R = window.innerWidth - r0.right, B = window.innerHeight - r0.bottom;
+        function mover(e){
+          var dx = e.clientX - x0, dy = e.clientY - y0;
+          if (!mov && Math.abs(dx) + Math.abs(dy) < 6) return;
+          if (!mov){ mov = true; document.body.classList.add('atb-moviendo'); try { el.setPointerCapture(ev.pointerId); } catch (x) {} }
+          POS = {r: R - dx, b: B - dy}; ubicar(); e.preventDefault();
+        }
+        function soltar(){
+          document.removeEventListener('pointermove', mover); document.removeEventListener('pointerup', soltar); document.removeEventListener('pointercancel', soltar);
+          document.body.classList.remove('atb-moviendo');
+          if (mov){ arrastrado = true; setTimeout(function(){ arrastrado = false; }, 0); guardar('atbl_pos', JSON.stringify(POS)); }
+        }
+        document.addEventListener('pointermove', mover); document.addEventListener('pointerup', soltar); document.addEventListener('pointercancel', soltar);
+      });
+    }
+    arrastrable(btn, function(){ return true; });
+    var head = p.querySelector('.atb-head');
+    arrastrable(head, function(ev){ return !ev.target.closest('button'); });
+    head.addEventListener('dblclick', function(ev){ if (ev.target.closest('button')) return; POS = null; guardar('atbl_pos', ''); ubicar(); });
+    btn.addEventListener('click', function(ev){ if (arrastrado){ ev.stopImmediatePropagation(); ev.preventDefault(); } }, true);
+    window.addEventListener('resize', ubicar);
+    ubicar();
+
+    btn.onclick = function(){ p.classList.contains('abierto') ? cerrar() : abrir(); setTimeout(ubicar, 0); };
     p.querySelector('.atb-x').onclick = function(){ cerrar(); };
     p.querySelector('.atb-home').onclick = bienvenida;
     p.addEventListener('keydown', function(ev){ if (ev.key === 'Escape'){ ev.stopPropagation(); cerrar(); } });
     p.querySelector('.atb-form').addEventListener('submit', function(ev){ ev.preventDefault(); var t = inp.value; inp.value = ''; enviar(t); });
     tz.onclick = function(ev){ if (ev.target.tagName === 'BUTTON'){ ev.stopPropagation(); ocultarTeaser(); } else abrir(); };
     if (!leer(claveTz)){
-      setTimeout(function(){ if (!p.classList.contains('abierto')) tz.classList.add('ver'); }, 1800);
+      setTimeout(function(){ if (!p.classList.contains('abierto')){ tz.classList.add('ver'); ubicar(); } }, 1800);
       setTimeout(function(){ if (tz.classList.contains('ver')) ocultarTeaser(); }, 12000);
     }
     window.__asistente = {responder: A.responder};
