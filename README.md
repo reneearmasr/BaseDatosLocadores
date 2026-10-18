@@ -25,6 +25,14 @@ Se puede mover con el mouse: arrastra el botón del robot o la barra superior de
 
 El código fuente del asistente está en `src/asistente.js`; ya va incluido dentro de `apps-script/Index.html`, así que para publicarlo solo se copian `Codigo.gs` e `Index.html`.
 
+## Multianual
+
+- Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
+- En el menú lateral, **Año de trabajo** permite cambiar de año; la app recuerda el último año elegido. Todo (base, techos, consolidados, resumen, calidad, historial, asistente) trabaja sobre el año elegido.
+- **＋ Año** crea un año nuevo copiando la base y los techos del año que se elija. Opcionalmente el monto mensual actual pasa a la columna "monto anterior" del año nuevo. El año copiado queda intacto y se puede seguir editando.
+- **Comparar versiones y años**: elige otro año para ver altas, bajas y cambios entre años.
+- La primera vez que se abre esta versión, las hojas `BASE` y `TECHOS` existentes se renombran a `BASE 2026` y `TECHOS 2026` sin perder datos.
+
 ## Numeración (N°)
 
 - Botón **"Numerar del 1 al …"** en Base de datos (aparece cuando hay registros sin N° o con N° repetido). También en Calidad de datos y en el menú de la hoja: **Gestor de Locadores → Renumerar N° de orden**.
