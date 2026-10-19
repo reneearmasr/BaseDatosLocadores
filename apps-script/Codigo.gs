@@ -22,6 +22,16 @@ const HEADERS = ['ID (no editar)','N°','ORGANO','UNIDAD ORGANICA','NOMBRE COMPL
 const H_HEAD = ['GRUPO','FECHA','USUARIO','ACCIÓN','ID','NOMBRE','DNI','CAMPO','VALOR ANTERIOR','VALOR NUEVO','MOTIVO','AÑO'];
 const ANIO_INICIAL = 2026; // año de la base cargada al inicio (hojas BASE / TECHOS sin año)
 const NUM_KEYS = ['montoAnt','montoAct'];
+/* Columnas añadidas al final (después de ACTUALIZADO POR) para no mover los datos existentes:
+   meses financiados (con certificado) y previsión presupuestal para los años siguientes */
+const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SET','OCT','NOV','DIC'];
+const BASE_N = KEYS.length;
+const EXTRA_KEYS = MESES.map(function (m, i) { return 'm' + ('0' + (i + 1)).slice(-2); }).concat(['prevision','prevNum','prevMonto','prevAnios']);
+const EXTRA_HEADERS = MESES.map(function (m) { return 'FINANCIADO ' + m; }).concat(['PREVISIÓN PRESUPUESTAL','N° PREVISIÓN','MONTO PREVISTO','AÑOS DE LA PREVISIÓN']);
+EXTRA_KEYS.forEach(function (k) { KEYS.push(k); });
+EXTRA_HEADERS.forEach(function (h) { HEADERS.push(h); });
+NUM_KEYS.push('prevMonto');
+function colsNum_() { return NUM_KEYS.map(function (k) { return KEYS.indexOf(k) + 1; }); }
 const T_HEAD = ['NIVEL','ÓRGANO','UNIDAD ORGÁNICA','TECHO MONTO MENSUAL'];
 /* Techos iniciales (archivo "Techos por Área usuaria"). Se copian a la hoja TECHOS la primera vez. */
 const TECHOS_INICIALES = []; // Los techos se cargan desde la app (Datos y respaldo → Cargar techos desde Excel)
@@ -112,12 +122,25 @@ function getNum_(k, y) {
 }
 function setNum_(k, y, v) { props_().setProperty(k + '_' + y, String(v)); }
 
+function asegurarColumnas_(b, n) {
+  if (b.getMaxColumns() < n) b.insertColumnsAfter(b.getMaxColumns(), n - b.getMaxColumns());
+}
+/* Agrega a una hoja BASE existente las columnas de meses financiados y previsión (una sola vez) */
+function asegurarExtras_(b) {
+  if (String(b.getRange(1, BASE_N + 1).getValue()) === EXTRA_HEADERS[0]) return;
+  asegurarColumnas_(b, KEYS.length);
+  b.getRange(1, BASE_N + 1, b.getMaxRows(), EXTRA_KEYS.length).setNumberFormat('@');
+  b.getRange(2, KEYS.indexOf('prevMonto') + 1, b.getMaxRows() - 1, 1).setNumberFormat('#,##0.00');
+  b.getRange(1, BASE_N + 1, 1, EXTRA_HEADERS.length).setValues([EXTRA_HEADERS]).setFontWeight('bold')
+    .setBackground('#4a3a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
+}
 function nuevaBase_(ss, nombre) {
   var b = ss.insertSheet(nombre, 0);
+  asegurarColumnas_(b, KEYS.length);
   b.getRange(1, 1, b.getMaxRows(), KEYS.length).setNumberFormat('@');
   b.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold')
     .setBackground('#1f5f6b').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
-  [KEYS.indexOf('montoAnt') + 1, KEYS.indexOf('montoAct') + 1].forEach(function (c) {
+  colsNum_().forEach(function (c) {
     b.getRange(2, c, b.getMaxRows() - 1, 1).setNumberFormat('#,##0.00');
   });
   b.setFrozenRows(1); b.setFrozenColumns(1); b.setRowHeight(1, 48);
@@ -143,7 +166,10 @@ function setup_() {
   var viejaT = ss.getSheetByName('TECHOS');
   if (viejaT && !ss.getSheetByName(nomTechos_(ANIO_INICIAL))) viejaT.setName(nomTechos_(ANIO_INICIAL));
   if (!anios_().length) nuevaBase_(ss, nomBase_(ANIO_INICIAL));
-  anios_().forEach(function (y) { if (!ss.getSheetByName(nomTechos_(y))) nuevosTechos_(ss, nomTechos_(y), y === ANIO_INICIAL ? TECHOS_INICIALES : []); });
+  anios_().forEach(function (y) {
+    if (!ss.getSheetByName(nomTechos_(y))) nuevosTechos_(ss, nomTechos_(y), y === ANIO_INICIAL ? TECHOS_INICIALES : []);
+    asegurarExtras_(ss.getSheetByName(nomBase_(y)));
+  });
 
   var h = ss.getSheetByName('HISTORIAL');
   if (!h) {
@@ -155,15 +181,19 @@ function setup_() {
     h.getRange(1, H_HEAD.length).setValue('AÑO').setFontWeight('bold').setBackground('#1f5f6b').setFontColor('#ffffff');
     h.getRange(2, H_HEAD.length, h.getMaxRows() - 1, 1).setNumberFormat('@');
   }
-  var bjH = HEADERS.concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']);
+  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS);
   var d = ss.getSheetByName('BAJAS');
   if (!d) {
     d = ss.insertSheet('BAJAS');
     d.getRange(1, 1, d.getMaxRows(), bjH.length).setNumberFormat('@');
     d.getRange(1, 1, 1, bjH.length).setValues([bjH]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     d.setFrozenRows(1);
-  } else if (String(d.getRange(1, bjH.length).getValue()) !== 'AÑO') {
-    d.getRange(1, bjH.length).setValue('AÑO').setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+  } else {
+    if (String(d.getRange(1, BASE_N + 3).getValue()) !== 'AÑO') d.getRange(1, BASE_N + 3).setValue('AÑO').setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+    if (String(d.getRange(1, BASE_N + 4).getValue()) !== EXTRA_HEADERS[0]) {
+      asegurarColumnas_(d, bjH.length);
+      d.getRange(1, BASE_N + 4, 1, EXTRA_HEADERS.length).setValues([EXTRA_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+    }
   }
   // borrar la hoja vacía por defecto
   ss.getSheets().forEach(function (s) {
@@ -217,17 +247,25 @@ function getTechos_(y) {
   return t.getRange(2, 1, last - 1, 4).getValues().filter(function (r) { return r[1] !== '' || r[2] !== ''; })
     .map(function (r) { return [String(r[0]), String(r[1]).trim(), String(r[2]).trim(), Number(r[3]) || 0]; });
 }
+/* Agrega filas al final de una hoja, ampliándola si hace falta (las hojas nuevas traen solo 1000 filas) */
+function append_(sh, rows) {
+  if (!rows.length) return;
+  var start = sh.getLastRow() + 1, need = start + rows.length - 1;
+  if (need > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), need - sh.getMaxRows() + 200);
+  sh.getRange(start, 1, rows.length, rows[0].length).setValues(rows);
+}
 function logH_(fila, y) {
   var hs = ss_().getSheetByName('HISTORIAL');
   var r = fila.slice(0, H_HEAD.length - 1); while (r.length < H_HEAD.length - 1) r.push('');
   r.push(String(y));
-  hs.getRange(hs.getLastRow() + 1, 1, 1, H_HEAD.length).setValues([r]);
+  append_(hs, [r]);
 }
 
 /* ---------- Año nuevo ----------
  * Copia la base y los techos del año "desde" al año "nuevo".
- * pasarMonto: el monto mensual actual del año anterior pasa a ser el "monto anterior" del nuevo año. */
-function crearAnio(nuevo, desde, usuario, pasarMonto) {
+ * pasarMonto: el monto mensual actual del año anterior pasa a ser el "monto anterior" del nuevo año.
+ * limpiarMeses: el año nuevo empieza sin meses financiados (aún no tiene certificados). */
+function crearAnio(nuevo, desde, usuario, pasarMonto, limpiarMeses) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
@@ -244,6 +282,8 @@ function crearAnio(nuevo, desde, usuario, pasarMonto) {
       var cA = KEYS.indexOf('montoAnt') + 1, cB = KEYS.indexOf('montoAct') + 1;
       b.getRange(2, cA, last - 1, 1).setValues(b.getRange(2, cB, last - 1, 1).getValues());
     }
+    asegurarExtras_(b);
+    if (limpiarMeses && last > 1) b.getRange(2, BASE_N + 1, last - 1, 12).clearContent();
     var tSrc = ss.getSheetByName(nomTechos_(d));
     if (tSrc) tSrc.copyTo(ss).setName(nomTechos_(y)); else nuevosTechos_(ss, nomTechos_(y), []);
     setNum_('maxId', y, getNum_('maxId', d));
@@ -251,7 +291,7 @@ function crearAnio(nuevo, desde, usuario, pasarMonto) {
     var user = email_(usuario);
     var total = Math.max(0, last - 1);
     logH_([String(Date.now()), now_(), user, 'Nuevo año', '', 'Año ' + y, '', '', 'Año ' + d, total + ' registros',
-      'Creado copiando la base y los techos de ' + d + (pasarMonto ? '; monto actual ' + d + ' → monto anterior ' + y : '')], y);
+      'Creado copiando la base y los techos de ' + d + (pasarMonto ? '; monto actual ' + d + ' → monto anterior ' + y : '') + (limpiarMeses ? '; sin meses financiados' : '')], y);
     return JSON.stringify({ ok: true, anio: y, total: total, version: bump_(user) });
   } finally { lock.releaseLock(); }
 }
@@ -375,13 +415,14 @@ function commit(p) {
       var start = Math.max(b.getLastRow(), 1) + 1;
       if (start + adds.length - 1 > b.getMaxRows()) b.insertRowsAfter(b.getMaxRows(), start + adds.length - 1 - b.getMaxRows() + 50);
       b.getRange(start, 1, adds.length, KEYS.length).setNumberFormat('@');
-      [KEYS.indexOf('montoAnt') + 1, KEYS.indexOf('montoAct') + 1].forEach(function (c) { b.getRange(start, c, adds.length, 1).setNumberFormat('#,##0.00'); });
+      colsNum_().forEach(function (c) { b.getRange(start, c, adds.length, 1).setNumberFormat('#,##0.00'); });
       b.getRange(start, 1, adds.length, KEYS.length).setValues(adds);
     }
     if (dels.length) {
       var bj = ss_().getSheetByName('BAJAS');
-      var copy = dels.map(function (r) { return b.getRange(r, 1, 1, KEYS.length).getValues()[0].map(String).concat([ts, user, String(y)]); });
-      bj.getRange(bj.getLastRow() + 1, 1, copy.length, copy[0].length).setValues(copy);
+      var copy = dels.map(function (r) { var v = b.getRange(r, 1, 1, KEYS.length).getValues()[0].map(String); return v.slice(0, BASE_N).concat([ts, user, String(y)]).concat(v.slice(BASE_N)); });
+      asegurarColumnas_(bj, copy[0].length);
+      append_(bj, copy);
       dels.sort(function (a, c) { return c - a; }).forEach(function (r) { b.deleteRow(r); });
     }
 
@@ -396,7 +437,7 @@ function commit(p) {
     });
     if (hist.length) {
       var hs = ss_().getSheetByName('HISTORIAL');
-      hs.getRange(hs.getLastRow() + 1, 1, hist.length, H_HEAD.length).setValues(hist);
+      append_(hs, hist);
     }
     setNum_('maxId', y, maxId);
     setNum_('maxN', y, maxN);
