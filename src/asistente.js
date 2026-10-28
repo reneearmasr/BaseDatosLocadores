@@ -102,7 +102,7 @@ function crearAsistenteLoc(){
   }
   const hayFiltro = f => ['area', 'tipo', 'grado', 'nivel', 'cert', 'vari', 'reemp', 'exc', 'min', 'max'].some(k => f[k] != null);
   function filtrar(f){
-    return DB.data.filter(r => {
+    return DB.data.filter(esAct).filter(r => {
       if (f.area){
         if (f.area.kind === 'organo'){ if (norm(r.organo) !== norm(f.area.name)) return false; }
         else if (norm(r.uo) !== norm(f.area.name)) return false;
@@ -244,7 +244,7 @@ function crearAsistenteLoc(){
         const ok = t.saldo + 0.005 >= hipo;
         html += '<div class="atb-glosa" style="margin-top:9px">' + (ok ? '✅ Sí alcanza: un locador de <b>' + fmtS0(hipo) + '</b> deja un saldo de <b>' + fmtS0(t.saldo - hipo) + '</b>.' : '⛔ No alcanza: con un locador de <b>' + fmtS0(hipo) + '</b> el área quedaría <b>' + fmtS0(hipo - t.saldo) + '</b> por encima de su techo.') + '</div>';
       }
-      const rows = DB.data.filter(r => t.isO ? norm(r.organo) === t.k : norm(r.organo) + '|' + norm(r.uo) === t.k);
+      const rows = DB.data.filter(esAct).filter(r => t.isO ? norm(r.organo) === t.k : norm(r.organo) + '|' + norm(r.uo) === t.k);
       html += '<div class="atb-acts">' + verBase(rows, 'Techo: ' + nomT(t)) + '</div>';
       return {html, chips: ['Resumen de ' + nomT(t), nomT(t) + ' honorarios más altos', '¿Qué áreas exceden su techo?']};
     }
@@ -662,7 +662,7 @@ body.atb-moviendo .atb-panel,body.atb-moviendo .atb-teaser{transition:none !impo
       '<div class="atb-pie">Calculado con la base de locadores en Google Sheets (sin los filtros aplicados).</div>';
     document.body.appendChild(tz); document.body.appendChild(btn); document.body.appendChild(p);
     var msgs = p.querySelector('.atb-msgs'), inp = p.querySelector('.atb-in'), iniciado = false;
-    function fec(){ p.querySelector('.atb-fec').textContent = fmtN(DB.data.length) + ' locadores · ' + (LAST_SYNC || A.fecha()); }
+    function fec(){ p.querySelector('.atb-fec').textContent = fmtN(DB.data.filter(esAct).length) + ' locadores activos · ' + (LAST_SYNC || A.fecha()); }
     fec();
 
     function abajo(){ msgs.scrollTop = msgs.scrollHeight; }

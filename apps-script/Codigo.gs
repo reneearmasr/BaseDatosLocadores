@@ -28,8 +28,13 @@ const MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SET','OCT','NOV'
 const BASE_N = KEYS.length;
 const EXTRA_KEYS = MESES.map(function (m, i) { return 'm' + ('0' + (i + 1)).slice(-2); }).concat(['prevision','prevNum','prevMonto','prevAnios']);
 const EXTRA_HEADERS = MESES.map(function (m) { return 'FINANCIADO ' + m; }).concat(['PREVISIÓN PRESUPUESTAL','N° PREVISIÓN','MONTO PREVISTO','AÑOS DE LA PREVISIÓN']);
-EXTRA_KEYS.forEach(function (k) { KEYS.push(k); });
-EXTRA_HEADERS.forEach(function (h) { HEADERS.push(h); });
+/* Situación del locador (ACTIVO / PASÓ A CAS / CONCLUIDO…) y tipo de documento (DNI / CE…) */
+const EXTRA2_KEYS = ['situacion', 'sitFecha', 'sitSustento', 'tipoDoc'];
+const EXTRA2_HEADERS = ['SITUACIÓN', 'FECHA DE SITUACIÓN', 'SUSTENTO DE SITUACIÓN', 'TIPO DE DOCUMENTO'];
+const EXTRA2_COL = BASE_N + EXTRA_KEYS.length + 1;
+EXTRA_KEYS.concat(EXTRA2_KEYS).forEach(function (k) { KEYS.push(k); });
+EXTRA_HEADERS.concat(EXTRA2_HEADERS).forEach(function (h) { HEADERS.push(h); });
+function activoFila_(v) { var t = String(v[KEYS.indexOf('situacion')] || '').trim().toUpperCase(); return !t || t === 'ACTIVO'; }
 NUM_KEYS.push('prevMonto');
 function colsNum_() { return NUM_KEYS.map(function (k) { return KEYS.indexOf(k) + 1; }); }
 const T_HEAD = ['NIVEL','ÓRGANO','UNIDAD ORGÁNICA','TECHO MONTO MENSUAL'];
@@ -127,12 +132,20 @@ function asegurarColumnas_(b, n) {
 }
 /* Agrega a una hoja BASE existente las columnas de meses financiados y previsión (una sola vez) */
 function asegurarExtras_(b) {
+  asegurarSituacion_(b);
   if (String(b.getRange(1, BASE_N + 1).getValue()) === EXTRA_HEADERS[0]) return;
   asegurarColumnas_(b, KEYS.length);
   b.getRange(1, BASE_N + 1, b.getMaxRows(), EXTRA_KEYS.length).setNumberFormat('@');
   b.getRange(2, KEYS.indexOf('prevMonto') + 1, b.getMaxRows() - 1, 1).setNumberFormat('#,##0.00');
   b.getRange(1, BASE_N + 1, 1, EXTRA_HEADERS.length).setValues([EXTRA_HEADERS]).setFontWeight('bold')
     .setBackground('#4a3a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
+}
+function asegurarSituacion_(b) {
+  if (String(b.getRange(1, EXTRA2_COL).getValue()) === EXTRA2_HEADERS[0]) return;
+  asegurarColumnas_(b, KEYS.length);
+  b.getRange(1, EXTRA2_COL, b.getMaxRows(), EXTRA2_KEYS.length).setNumberFormat('@');
+  b.getRange(1, EXTRA2_COL, 1, EXTRA2_HEADERS.length).setValues([EXTRA2_HEADERS]).setFontWeight('bold')
+    .setBackground('#7a4a1f').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
 }
 function nuevaBase_(ss, nombre) {
   var b = ss.insertSheet(nombre, 0);
@@ -181,7 +194,7 @@ function setup_() {
     h.getRange(1, H_HEAD.length).setValue('AÑO').setFontWeight('bold').setBackground('#1f5f6b').setFontColor('#ffffff');
     h.getRange(2, H_HEAD.length, h.getMaxRows() - 1, 1).setNumberFormat('@');
   }
-  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS);
+  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS).concat(EXTRA2_HEADERS);
   var d = ss.getSheetByName('BAJAS');
   if (!d) {
     d = ss.insertSheet('BAJAS');
@@ -193,6 +206,10 @@ function setup_() {
     if (String(d.getRange(1, BASE_N + 4).getValue()) !== EXTRA_HEADERS[0]) {
       asegurarColumnas_(d, bjH.length);
       d.getRange(1, BASE_N + 4, 1, EXTRA_HEADERS.length).setValues([EXTRA_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+    }
+    if (String(d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length).getValue()) !== EXTRA2_HEADERS[0]) {
+      asegurarColumnas_(d, bjH.length);
+      d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length, 1, EXTRA2_HEADERS.length).setValues([EXTRA2_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     }
   }
   // borrar la hoja vacía por defecto
@@ -264,8 +281,9 @@ function logH_(fila, y) {
 /* ---------- Año nuevo ----------
  * Copia la base y los techos del año "desde" al año "nuevo".
  * pasarMonto: el monto mensual actual del año anterior pasa a ser el "monto anterior" del nuevo año.
- * limpiarMeses: el año nuevo empieza sin meses financiados (aún no tiene certificados). */
-function crearAnio(nuevo, desde, usuario, pasarMonto, limpiarMeses) {
+ * limpiarMeses: el año nuevo empieza sin meses financiados (aún no tiene certificados).
+ * omitirInactivos: no copia a quienes ya no están activos (PASÓ A CAS, CONCLUIDO…). */
+function crearAnio(nuevo, desde, usuario, pasarMonto, limpiarMeses, omitirInactivos) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
@@ -283,6 +301,17 @@ function crearAnio(nuevo, desde, usuario, pasarMonto, limpiarMeses) {
       b.getRange(2, cA, last - 1, 1).setValues(b.getRange(2, cB, last - 1, 1).getValues());
     }
     asegurarExtras_(b);
+    var omitidos = 0;
+    if (omitirInactivos && last > 1) {
+      var vals = b.getRange(2, 1, last - 1, KEYS.length).getValues();
+      var keep = vals.filter(activoFila_);
+      omitidos = vals.length - keep.length;
+      if (omitidos) {
+        b.getRange(2, 1, last - 1, KEYS.length).clearContent();
+        if (keep.length) b.getRange(2, 1, keep.length, KEYS.length).setValues(keep);
+        last = keep.length + 1;
+      }
+    }
     if (limpiarMeses && last > 1) b.getRange(2, BASE_N + 1, last - 1, 12).clearContent();
     var tSrc = ss.getSheetByName(nomTechos_(d));
     if (tSrc) tSrc.copyTo(ss).setName(nomTechos_(y)); else nuevosTechos_(ss, nomTechos_(y), []);
@@ -291,8 +320,8 @@ function crearAnio(nuevo, desde, usuario, pasarMonto, limpiarMeses) {
     var user = email_(usuario);
     var total = Math.max(0, last - 1);
     logH_([String(Date.now()), now_(), user, 'Nuevo año', '', 'Año ' + y, '', '', 'Año ' + d, total + ' registros',
-      'Creado copiando la base y los techos de ' + d + (pasarMonto ? '; monto actual ' + d + ' → monto anterior ' + y : '') + (limpiarMeses ? '; sin meses financiados' : '')], y);
-    return JSON.stringify({ ok: true, anio: y, total: total, version: bump_(user) });
+      'Creado copiando la base y los techos de ' + d + (pasarMonto ? '; monto actual ' + d + ' → monto anterior ' + y : '') + (limpiarMeses ? '; sin meses financiados' : '') + (omitidos ? '; sin ' + omitidos + ' no activos' : '')], y);
+    return JSON.stringify({ ok: true, anio: y, total: total, omitidos: omitidos, version: bump_(user) });
   } finally { lock.releaseLock(); }
 }
 

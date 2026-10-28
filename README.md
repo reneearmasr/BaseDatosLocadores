@@ -33,6 +33,14 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - La app calcula el monto financiado en el año, los meses pendientes de certificar (del mes actual a diciembre) y su costo, con filtros, alertas, KPIs en el Panel y la tabla "Financiamiento y previsión presupuestal por área" en Consolidados (exportable a Excel).
 - Al crear un año nuevo se puede empezar sin meses financiados.
 
+## Situación del locador (Pasó a CAS, concluido…)
+- Columnas nuevas al final de la hoja: **SITUACIÓN**, **FECHA DE SITUACIÓN**, **SUSTENTO DE SITUACIÓN** y **TIPO DE DOCUMENTO** (DNI, CE, PASAPORTE, PTP).
+- Vacío o ACTIVO = suma a la PEA. Cualquier otra situación (PASÓ A CAS, CONCLUIDO, RESOLUCIÓN DE CONTRATO, RENUNCIA) mantiene el registro en la base, pero **no suma** a la PEA, montos, techos, consolidados, Resumen locadores, calidad de datos ni al asistente.
+- **Cruce con Excel → "Marcar coincidencias como…"**: registra la situación en los locadores encontrados; la fecha y el sustento pueden tomarse de columnas del archivo (p. ej. FECHA DE FIRMA y CAS). Incluye los casos "Nombre coincide, DNI distinto" (p. ej. Carné de Extranjería) y opcionalmente reemplaza el documento por el del archivo.
+- Panel general: cuántos no activos hay y el **certificado que se libera** (meses financiados posteriores a la fecha de la situación), con exportación a Excel.
+- Base de datos: filtro "Situación" y etiqueta en el nombre. Al crear un año nuevo se puede no copiar a los no activos.
+- Los documentos con tipo distinto de DNI no se marcan como "DNI con longitud distinta de 8 dígitos".
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
