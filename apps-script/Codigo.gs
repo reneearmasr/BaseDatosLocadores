@@ -237,7 +237,7 @@ function leerBase_(b) {
 function getData(anio) {
   setup_();
   var y = anio_(anio);
-  return JSON.stringify({ rows: leerBase_(base_(y)), hist: getHistory_(3000, y), techos: getTechos_(y), anio: y, anios: anios_(),
+  return JSON.stringify({ rows: leerBase_(base_(y)), hist: getHistory_(3000, y), techos: getTechos_(y), ref: getRef_(y), anio: y, anios: anios_(),
     version: ver_(), user: activo_(), identificado: !!activo_(), title: ss_().getName(), url: ss_().getUrl() });
 }
 /* Solo los registros de un año (para comparar años) */
@@ -264,6 +264,53 @@ function getTechos_(y) {
   return t.getRange(2, 1, last - 1, 4).getValues().filter(function (r) { return r[1] !== '' || r[2] !== ''; })
     .map(function (r) { return [String(r[0]), String(r[1]).trim(), String(r[2]).trim(), Number(r[3]) || 0]; });
 }
+/* ---------- Referencia del "Resumen locadores" (columnas iniciales fijas) ----------
+ * Hoja "RESUMEN REF <año>": A1 = título; fila 2 = encabezados (NIVEL, UNIDAD ORGANICA, columnas de referencia);
+ * desde la fila 3: O (órgano) / U (unidad orgánica), nombre y valores. */
+var REF_MAXC = 12;
+function nomRef_(y) { return 'RESUMEN REF ' + y; }
+function getRef_(y) {
+  var s = ss_().getSheetByName(nomRef_(y));
+  if (!s) return null;
+  var last = s.getLastRow();
+  if (last < 3) return null;
+  var v = s.getRange(1, 1, last, REF_MAXC).getValues();
+  var heads = v[1].slice(2).map(function (x) { return String(x === null || x === undefined ? '' : x).trim(); });
+  while (heads.length && !heads[heads.length - 1]) heads.pop();
+  var nh = heads.length;
+  var rows = v.slice(2).filter(function (r) { return String(r[1]).trim() !== ''; }).map(function (r) {
+    return [String(r[0]).trim().toUpperCase() === 'O' ? 'O' : 'U', String(r[1]).trim()].concat(r.slice(2, 2 + nh).map(function (x) {
+      if (x === '' || x === null) return null; var n = Number(x); return isFinite(n) ? n : null; }));
+  });
+  return { titulo: String(v[0][0] || ''), heads: heads, rows: rows };
+}
+function setRef(ref, usuario, anio) {
+  var lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    setup_();
+    var y = anio_(anio), ss = ss_();
+    var nh = Math.min(ref.heads.length, REF_MAXC - 2);
+    var s = ss.getSheetByName(nomRef_(y)) || ss.insertSheet(nomRef_(y));
+    var last = s.getLastRow();
+    if (last > 0) s.getRange(1, 1, last, REF_MAXC).clearContent();
+    var pad = function (r) { while (r.length < REF_MAXC) r.push(''); return r; };
+    var out = [pad([String(ref.titulo || '')]), pad(['NIVEL', 'UNIDAD ORGANICA'].concat(ref.heads.slice(0, nh).map(String)))];
+    ref.rows.forEach(function (r) {
+      var row = [r[0] === 'O' ? 'O' : 'U', String(r[1])];
+      for (var i = 0; i < REF_MAXC - 2; i++) row.push(i < nh && r[2 + i] !== null && r[2 + i] !== undefined ? Number(r[2 + i]) : '');
+      out.push(row);
+    });
+    if (out.length > s.getMaxRows()) s.insertRowsAfter(s.getMaxRows(), out.length - s.getMaxRows() + 10);
+    s.getRange(1, 1, out.length, REF_MAXC).setValues(out);
+    s.getRange(2, 1, 1, REF_MAXC).setFontWeight('bold');
+    var user = email_(usuario);
+    logH_([String(Date.now()), now_(), user, 'Referencia del resumen', '', 'Resumen locadores', '', '', '', ref.rows.length + ' filas',
+      'Columnas de referencia: ' + ref.heads.slice(0, nh).join(' | ')], y);
+    return JSON.stringify({ ok: true, version: bump_(user) });
+  } finally { lock.releaseLock(); }
+}
+
 /* Agrega filas al final de una hoja, ampliándola si hace falta (las hojas nuevas traen solo 1000 filas) */
 function append_(sh, rows) {
   if (!rows.length) return;

@@ -41,6 +41,12 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - Base de datos: filtro "Situación" y etiqueta en el nombre. Al crear un año nuevo se puede no copiar a los no activos.
 - Los documentos con tipo distinto de DNI no se marcan como "DNI con longitud distinta de 8 dígitos".
 
+## Resumen locadores (comparativo)
+- El botón **Resumen locadores** (Base de datos) descarga el resumen en el formato comparativo de la Unidad de Presupuesto.
+- La primera vez pide el Excel de referencia: sus columnas iniciales (p. ej. PEA y gasto al 31.08 y Set.–Oct) se guardan en la hoja **RESUMEN REF <año>** y quedan fijas.
+- **PEA ACTUAL** y **MONTO ACTUAL** se calculan de la base en cada descarga (solo activos). **VAR. GASTO** y **VAR. PEAS** son fórmulas contra la última columna de gasto y de PEA de la referencia.
+- La referencia se cambia desde Datos y respaldo; el resumen anterior con techos sigue disponible allí ("Resumen con techos").
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
