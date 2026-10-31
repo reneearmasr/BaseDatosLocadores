@@ -171,6 +171,16 @@ function nuevosTechos_(ss, nombre, filas) {
 }
 
 /* Crea las hojas que falten y pasa la versión de un solo año a la multianual (sin perder datos) */
+/* setup_() revisa y prepara todas las hojas (muchas lecturas a Google). Se ejecuta completo una vez cada 6 horas
+ * por versión del código; el resto de las llamadas lo omite para que la aplicación cargue más rápido.
+ * Si se borra o renombra una hoja a mano, usar el menú "Preparar hojas" para rehacerlo de inmediato. */
+var SETUP_V = 'v6';
+function setupOnce_() {
+  var c = CacheService.getScriptCache(), k = 'setup_ok_' + SETUP_V;
+  try { if (c.get(k)) return; } catch (e) {}
+  setup_();
+  try { c.put(k, '1', 21600); } catch (e) {}
+}
 function setup_() {
   var ss = ss_();
   // migración: BASE → BASE 2026, TECHOS → TECHOS 2026
@@ -218,7 +228,7 @@ function setup_() {
     if (!/^(BASE|TECHOS) \d{4}$/.test(n) && ['HISTORIAL', 'BAJAS'].indexOf(n) < 0 && s.getLastRow() === 0 && ss.getSheets().length > 4) ss.deleteSheet(s);
   });
 }
-function base_(y) { setup_(); return ss_().getSheetByName(nomBase_(y)); }
+function base_(y) { setupOnce_(); return ss_().getSheetByName(nomBase_(y)); }
 
 /* ---------- Lectura ---------- */
 function leerBase_(b) {
@@ -235,14 +245,14 @@ function leerBase_(b) {
   return rows;
 }
 function getData(anio) {
-  setup_();
+  setupOnce_();
   var y = anio_(anio);
   return JSON.stringify({ rows: leerBase_(base_(y)), hist: getHistory_(3000, y), techos: getTechos_(y), ref: getRef_(y), anio: y, anios: anios_(),
     version: ver_(), user: activo_(), identificado: !!activo_(), title: ss_().getName(), url: ss_().getUrl() });
 }
 /* Solo los registros de un año (para comparar años) */
 function getRows(anio) {
-  setup_();
+  setupOnce_();
   var y = Number(anio);
   if (anios_().indexOf(y) < 0) throw new Error('No existe el año ' + anio);
   return JSON.stringify({ rows: leerBase_(base_(y)), anio: y });
@@ -288,7 +298,7 @@ function setRef(ref, usuario, anio) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
-    setup_();
+    setupOnce_();
     var y = anio_(anio), ss = ss_();
     var nh = Math.min(ref.heads.length, REF_MAXC - 2);
     var s = ss.getSheetByName(nomRef_(y)) || ss.insertSheet(nomRef_(y));
@@ -398,7 +408,7 @@ function setTechos(rows, usuario, anio) {
   var lock = LockService.getDocumentLock();
   lock.waitLock(30000);
   try {
-    setup_();
+    setupOnce_();
     var y = anio_(anio);
     var t = ss_().getSheetByName(nomTechos_(y));
     var last = t.getLastRow();
