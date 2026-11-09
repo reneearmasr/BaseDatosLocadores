@@ -47,6 +47,10 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - **PEA ACTUAL** y **MONTO ACTUAL** se calculan de la base en cada descarga (solo activos). **VAR. GASTO** y **VAR. PEAS** son fórmulas contra la última columna de gasto y de PEA de la referencia.
 - La referencia se cambia desde Datos y respaldo; el resumen anterior con techos sigue disponible allí ("Resumen con techos").
 
+## Locadores eliminados (hoja BAJAS)
+- En **Historial de cambios → Eliminados (BAJAS)** se ven todos los locadores eliminados del año, con fecha y usuario que los eliminó, y si ya volvieron a la base o siguen fuera.
+- Se pueden **exportar a Excel** o **restaurar**: vuelven a la base con un N° nuevo, marcados con la situación **DADO DE BAJA** (no suman a la PEA) o como ACTIVOS.
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.

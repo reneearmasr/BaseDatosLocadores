@@ -274,6 +274,27 @@ function getTechos_(y) {
   return t.getRange(2, 1, last - 1, 4).getValues().filter(function (r) { return r[1] !== '' || r[2] !== ''; })
     .map(function (r) { return [String(r[0]), String(r[1]).trim(), String(r[2]).trim(), Number(r[3]) || 0]; });
 }
+/* ---------- Registros eliminados (hoja BAJAS) del año: para revisarlos y restaurarlos desde la app ---------- */
+function getBajas(anio) {
+  setupOnce_();
+  var y = anio_(anio), bj = ss_().getSheetByName('BAJAS');
+  if (!bj || bj.getLastRow() < 2) return JSON.stringify({ rows: [] });
+  var nc = BASE_N + 3 + (KEYS.length - BASE_N);
+  var v = bj.getRange(2, 1, bj.getLastRow() - 1, nc).getValues();
+  var rows = [];
+  v.forEach(function (r, i) {
+    var ya = String(r[BASE_N + 2] || '').trim() || String(ANIO_INICIAL);
+    if (ya !== String(y) || String(r[4] || '').trim() === '') return;
+    var o = { fila: i + 2, fechaBaja: String(r[BASE_N] || ''), por: String(r[BASE_N + 1] || '') };
+    for (var k = 0; k < BASE_N; k++) o[KEYS[k]] = r[k];
+    for (var j = BASE_N; j < KEYS.length; j++) o[KEYS[j]] = r[j + 3];
+    Object.keys(o).forEach(function (k) { if (o[k] instanceof Date) o[k] = Utilities.formatDate(o[k], TZ, 'dd/MM/yyyy'); });
+    NUM_KEYS.forEach(function (k) { var n = Number(String(o[k]).replace(/,/g, '')); o[k] = isFinite(n) && String(o[k]).trim() !== '' ? n : null; });
+    rows.push(o);
+  });
+  return JSON.stringify({ rows: rows });
+}
+
 /* ---------- Referencia del "Resumen locadores" (columnas iniciales fijas) ----------
  * Hoja "RESUMEN REF <año>": A1 = título; fila 2 = encabezados (NIVEL, UNIDAD ORGANICA, columnas de referencia);
  * desde la fila 3: O (órgano) / U (unidad orgánica), nombre y valores. */
