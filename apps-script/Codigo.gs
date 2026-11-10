@@ -32,8 +32,12 @@ const EXTRA_HEADERS = MESES.map(function (m) { return 'FINANCIADO ' + m; }).conc
 const EXTRA2_KEYS = ['situacion', 'sitFecha', 'sitSustento', 'tipoDoc'];
 const EXTRA2_HEADERS = ['SITUACIÓN', 'FECHA DE SITUACIÓN', 'SUSTENTO DE SITUACIÓN', 'TIPO DE DOCUMENTO'];
 const EXTRA2_COL = BASE_N + EXTRA_KEYS.length + 1;
-EXTRA_KEYS.concat(EXTRA2_KEYS).forEach(function (k) { KEYS.push(k); });
-EXTRA_HEADERS.concat(EXTRA2_HEADERS).forEach(function (h) { HEADERS.push(h); });
+/* RUC del proveedor (11 dígitos) */
+const EXTRA3_KEYS = ['ruc'];
+const EXTRA3_HEADERS = ['RUC'];
+const EXTRA3_COL = EXTRA2_COL + EXTRA2_KEYS.length;
+EXTRA_KEYS.concat(EXTRA2_KEYS, EXTRA3_KEYS).forEach(function (k) { KEYS.push(k); });
+EXTRA_HEADERS.concat(EXTRA2_HEADERS, EXTRA3_HEADERS).forEach(function (h) { HEADERS.push(h); });
 function activoFila_(v) { var t = String(v[KEYS.indexOf('situacion')] || '').trim().toUpperCase(); return !t || t === 'ACTIVO'; }
 NUM_KEYS.push('prevMonto');
 function colsNum_() { return NUM_KEYS.map(function (k) { return KEYS.indexOf(k) + 1; }); }
@@ -133,12 +137,20 @@ function asegurarColumnas_(b, n) {
 /* Agrega a una hoja BASE existente las columnas de meses financiados y previsión (una sola vez) */
 function asegurarExtras_(b) {
   asegurarSituacion_(b);
+  asegurarRuc_(b);
   if (String(b.getRange(1, BASE_N + 1).getValue()) === EXTRA_HEADERS[0]) return;
   asegurarColumnas_(b, KEYS.length);
   b.getRange(1, BASE_N + 1, b.getMaxRows(), EXTRA_KEYS.length).setNumberFormat('@');
   b.getRange(2, KEYS.indexOf('prevMonto') + 1, b.getMaxRows() - 1, 1).setNumberFormat('#,##0.00');
   b.getRange(1, BASE_N + 1, 1, EXTRA_HEADERS.length).setValues([EXTRA_HEADERS]).setFontWeight('bold')
     .setBackground('#4a3a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
+}
+function asegurarRuc_(b) {
+  if (String(b.getRange(1, EXTRA3_COL).getValue()) === EXTRA3_HEADERS[0]) return;
+  asegurarColumnas_(b, KEYS.length);
+  b.getRange(1, EXTRA3_COL, b.getMaxRows(), EXTRA3_KEYS.length).setNumberFormat('@');
+  b.getRange(1, EXTRA3_COL, 1, EXTRA3_HEADERS.length).setValues([EXTRA3_HEADERS]).setFontWeight('bold')
+    .setBackground('#1f5a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
 }
 function asegurarSituacion_(b) {
   if (String(b.getRange(1, EXTRA2_COL).getValue()) === EXTRA2_HEADERS[0]) return;
@@ -174,7 +186,7 @@ function nuevosTechos_(ss, nombre, filas) {
 /* setup_() revisa y prepara todas las hojas (muchas lecturas a Google). Se ejecuta completo una vez cada 6 horas
  * por versión del código; el resto de las llamadas lo omite para que la aplicación cargue más rápido.
  * Si se borra o renombra una hoja a mano, usar el menú "Preparar hojas" para rehacerlo de inmediato. */
-var SETUP_V = 'v6';
+var SETUP_V = 'v7';
 function setupOnce_() {
   var c = CacheService.getScriptCache(), k = 'setup_ok_' + SETUP_V;
   try { if (c.get(k)) return; } catch (e) {}
@@ -204,7 +216,7 @@ function setup_() {
     h.getRange(1, H_HEAD.length).setValue('AÑO').setFontWeight('bold').setBackground('#1f5f6b').setFontColor('#ffffff');
     h.getRange(2, H_HEAD.length, h.getMaxRows() - 1, 1).setNumberFormat('@');
   }
-  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS).concat(EXTRA2_HEADERS);
+  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS).concat(EXTRA2_HEADERS).concat(EXTRA3_HEADERS);
   var d = ss.getSheetByName('BAJAS');
   if (!d) {
     d = ss.insertSheet('BAJAS');
@@ -220,6 +232,10 @@ function setup_() {
     if (String(d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length).getValue()) !== EXTRA2_HEADERS[0]) {
       asegurarColumnas_(d, bjH.length);
       d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length, 1, EXTRA2_HEADERS.length).setValues([EXTRA2_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+    }
+    if (String(d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length + EXTRA2_KEYS.length).getValue()) !== EXTRA3_HEADERS[0]) {
+      asegurarColumnas_(d, bjH.length);
+      d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length + EXTRA2_KEYS.length, 1, EXTRA3_HEADERS.length).setValues([EXTRA3_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     }
   }
   // borrar la hoja vacía por defecto

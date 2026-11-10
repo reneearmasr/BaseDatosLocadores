@@ -51,6 +51,10 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - En **Historial de cambios → Eliminados (BAJAS)** se ven todos los locadores eliminados del año, con fecha y usuario que los eliminó, y si ya volvieron a la base o siguen fuera.
 - Se pueden **exportar a Excel** o **restaurar**: vuelven a la base con un N° nuevo, marcados con la situación **DADO DE BAJA** (no suman a la PEA) o como ACTIVOS.
 
+## RUC y actualización de datos desde un archivo
+- Nueva columna **RUC** al final de la hoja (ficha, base y calidad de datos: "Sin RUC" y "RUC que no corresponde al DNI").
+- **Cruce con Excel → Actualizar datos desde el archivo…**: trae RUC, DNI y nombre del archivo a los locadores encontrados (el archivo se toma como correcto), por tipo de coincidencia, con vista previa en Excel. En RUC 15/17 no se cambia el documento.
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
