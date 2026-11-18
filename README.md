@@ -55,6 +55,11 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - Nueva columna **RUC** al final de la hoja (ficha, base y calidad de datos: "Sin RUC" y "RUC que no corresponde al DNI").
 - **Cruce con Excel → Actualizar datos desde el archivo…**: trae RUC, DNI y nombre del archivo a los locadores encontrados (el archivo se toma como correcto), por tipo de coincidencia, con vista previa en Excel. En RUC 15/17 no se cambia el documento.
 
+## Orden de servicio
+- Columnas nuevas al final: **N° ORDEN DE SERVICIO, FECHA DE INICIO (OS), FECHA FIN (OS), PLAZO (DÍAS), ESTADO DE LA ORDEN** (además se actualiza "Nro. De entregables").
+- Se cargan con **Cruce con Excel → Actualizar datos desde el archivo…** (el modal reconoce las columnas por su encabezado).
+- Base de datos: columna "Orden de servicio" con el N° y la fecha de vencimiento (verde, ámbar ≤15 días, rojo vencida). Calidad de datos: "Orden vencida o por vencer" y "Sin orden de servicio".
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.

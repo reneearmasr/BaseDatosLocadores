@@ -36,8 +36,12 @@ const EXTRA2_COL = BASE_N + EXTRA_KEYS.length + 1;
 const EXTRA3_KEYS = ['ruc'];
 const EXTRA3_HEADERS = ['RUC'];
 const EXTRA3_COL = EXTRA2_COL + EXTRA2_KEYS.length;
-EXTRA_KEYS.concat(EXTRA2_KEYS, EXTRA3_KEYS).forEach(function (k) { KEYS.push(k); });
-EXTRA_HEADERS.concat(EXTRA2_HEADERS, EXTRA3_HEADERS).forEach(function (h) { HEADERS.push(h); });
+/* Orden de servicio vigente (reporte de órdenes de Logística) */
+const EXTRA4_KEYS = ['osNum', 'osInicio', 'osFin', 'osPlazo', 'osEstado'];
+const EXTRA4_HEADERS = ['N° ORDEN DE SERVICIO', 'FECHA DE INICIO (OS)', 'FECHA FIN (OS)', 'PLAZO (DÍAS)', 'ESTADO DE LA ORDEN'];
+const EXTRA4_COL = EXTRA3_COL + EXTRA3_KEYS.length;
+EXTRA_KEYS.concat(EXTRA2_KEYS, EXTRA3_KEYS, EXTRA4_KEYS).forEach(function (k) { KEYS.push(k); });
+EXTRA_HEADERS.concat(EXTRA2_HEADERS, EXTRA3_HEADERS, EXTRA4_HEADERS).forEach(function (h) { HEADERS.push(h); });
 function activoFila_(v) { var t = String(v[KEYS.indexOf('situacion')] || '').trim().toUpperCase(); return !t || t === 'ACTIVO'; }
 NUM_KEYS.push('prevMonto');
 function colsNum_() { return NUM_KEYS.map(function (k) { return KEYS.indexOf(k) + 1; }); }
@@ -136,8 +140,10 @@ function asegurarColumnas_(b, n) {
 }
 /* Agrega a una hoja BASE existente las columnas de meses financiados y previsión (una sola vez) */
 function asegurarExtras_(b) {
+  asegurarColumnas_(b, KEYS.length);   // primero las columnas: leer más allá del borde de la hoja da error
   asegurarSituacion_(b);
   asegurarRuc_(b);
+  asegurarOS_(b);
   if (String(b.getRange(1, BASE_N + 1).getValue()) === EXTRA_HEADERS[0]) return;
   asegurarColumnas_(b, KEYS.length);
   b.getRange(1, BASE_N + 1, b.getMaxRows(), EXTRA_KEYS.length).setNumberFormat('@');
@@ -146,13 +152,23 @@ function asegurarExtras_(b) {
     .setBackground('#4a3a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
 }
 function asegurarRuc_(b) {
+  asegurarColumnas_(b, KEYS.length);
   if (String(b.getRange(1, EXTRA3_COL).getValue()) === EXTRA3_HEADERS[0]) return;
   asegurarColumnas_(b, KEYS.length);
   b.getRange(1, EXTRA3_COL, b.getMaxRows(), EXTRA3_KEYS.length).setNumberFormat('@');
   b.getRange(1, EXTRA3_COL, 1, EXTRA3_HEADERS.length).setValues([EXTRA3_HEADERS]).setFontWeight('bold')
     .setBackground('#1f5a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
 }
+function asegurarOS_(b) {
+  asegurarColumnas_(b, KEYS.length);
+  if (String(b.getRange(1, EXTRA4_COL).getValue()) === EXTRA4_HEADERS[0]) return;
+  asegurarColumnas_(b, KEYS.length);
+  b.getRange(1, EXTRA4_COL, b.getMaxRows(), EXTRA4_KEYS.length).setNumberFormat('@');
+  b.getRange(1, EXTRA4_COL, 1, EXTRA4_HEADERS.length).setValues([EXTRA4_HEADERS]).setFontWeight('bold')
+    .setBackground('#4a3a7a').setFontColor('#ffffff').setWrap(true).setVerticalAlignment('middle');
+}
 function asegurarSituacion_(b) {
+  asegurarColumnas_(b, KEYS.length);
   if (String(b.getRange(1, EXTRA2_COL).getValue()) === EXTRA2_HEADERS[0]) return;
   asegurarColumnas_(b, KEYS.length);
   b.getRange(1, EXTRA2_COL, b.getMaxRows(), EXTRA2_KEYS.length).setNumberFormat('@');
@@ -186,7 +202,7 @@ function nuevosTechos_(ss, nombre, filas) {
 /* setup_() revisa y prepara todas las hojas (muchas lecturas a Google). Se ejecuta completo una vez cada 6 horas
  * por versión del código; el resto de las llamadas lo omite para que la aplicación cargue más rápido.
  * Si se borra o renombra una hoja a mano, usar el menú "Preparar hojas" para rehacerlo de inmediato. */
-var SETUP_V = 'v7';
+var SETUP_V = 'v8';
 function setupOnce_() {
   var c = CacheService.getScriptCache(), k = 'setup_ok_' + SETUP_V;
   try { if (c.get(k)) return; } catch (e) {}
@@ -216,14 +232,16 @@ function setup_() {
     h.getRange(1, H_HEAD.length).setValue('AÑO').setFontWeight('bold').setBackground('#1f5f6b').setFontColor('#ffffff');
     h.getRange(2, H_HEAD.length, h.getMaxRows() - 1, 1).setNumberFormat('@');
   }
-  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS).concat(EXTRA2_HEADERS).concat(EXTRA3_HEADERS);
+  var bjH = HEADERS.slice(0, BASE_N).concat(['FECHA DE BAJA', 'DADO DE BAJA POR', 'AÑO']).concat(EXTRA_HEADERS).concat(EXTRA2_HEADERS).concat(EXTRA3_HEADERS).concat(EXTRA4_HEADERS);
   var d = ss.getSheetByName('BAJAS');
   if (!d) {
     d = ss.insertSheet('BAJAS');
+    asegurarColumnas_(d, bjH.length);
     d.getRange(1, 1, d.getMaxRows(), bjH.length).setNumberFormat('@');
     d.getRange(1, 1, 1, bjH.length).setValues([bjH]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     d.setFrozenRows(1);
   } else {
+    asegurarColumnas_(d, bjH.length);
     if (String(d.getRange(1, BASE_N + 3).getValue()) !== 'AÑO') d.getRange(1, BASE_N + 3).setValue('AÑO').setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     if (String(d.getRange(1, BASE_N + 4).getValue()) !== EXTRA_HEADERS[0]) {
       asegurarColumnas_(d, bjH.length);
@@ -236,6 +254,11 @@ function setup_() {
     if (String(d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length + EXTRA2_KEYS.length).getValue()) !== EXTRA3_HEADERS[0]) {
       asegurarColumnas_(d, bjH.length);
       d.getRange(1, BASE_N + 4 + EXTRA_KEYS.length + EXTRA2_KEYS.length, 1, EXTRA3_HEADERS.length).setValues([EXTRA3_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
+    }
+    var c4 = BASE_N + 4 + EXTRA_KEYS.length + EXTRA2_KEYS.length + EXTRA3_KEYS.length;
+    if (String(d.getRange(1, c4).getValue()) !== EXTRA4_HEADERS[0]) {
+      asegurarColumnas_(d, bjH.length);
+      d.getRange(1, c4, 1, EXTRA4_HEADERS.length).setValues([EXTRA4_HEADERS]).setFontWeight('bold').setBackground('#8e2f39').setFontColor('#ffffff');
     }
   }
   // borrar la hoja vacía por defecto
