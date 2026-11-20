@@ -4,29 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gestor de Locadores · ATU</title>
+<!-- Lleva directo al aplicativo en pestaña completa (sin recuadro incrustado):
+     dentro de un recuadro Google puede responder "401" si el navegador bloquea cookies de terceros. -->
+<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbzW2XeCcNHCo4SKhwMquBaGS4tDa7Ke_NUdbMja3yOd78sxNs5_OXsF3tQ6UZzt5-Nf/exec">
 <style>
-  :root{--bar:#13363d;--ink:#e8f1f3;--acc:#c9822b}
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:#f4f6f7;font:14px/1.4 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
-  header{height:44px;background:var(--bar);color:var(--ink);display:flex;align-items:center;gap:12px;padding:0 16px}
-  header b{font-size:15px}
-  header span{opacity:.75;font-size:12.5px}
-  header a{margin-left:auto;color:#fff;background:var(--acc);text-decoration:none;padding:6px 12px;border-radius:7px;font-weight:600;font-size:13px;white-space:nowrap}
-  iframe{display:block;width:100%;height:calc(100% - 44px);border:0}
-  @media (max-width:600px){header span{display:none}}
+  :root{--bar:#13363d;--acc:#c9822b}
+  html,body{margin:0;height:100%;background:#f4f6f7;color:#1f2d30;font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+  header{height:44px;background:var(--bar);color:#e8f1f3;display:flex;align-items:center;padding:0 16px;font-weight:700}
+  main{max-width:520px;margin:12vh auto 0;padding:0 16px;text-align:center}
+  a.btn{display:inline-block;margin-top:14px;color:#fff;background:var(--acc);text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600}
+  p.s{font-size:13px;color:#5b6b6f}
 </style>
 </head>
 <body>
-<header>
-  <b>Gestor de Locadores</b><span>ATU · Base de datos de locadores</span>
-  <a id="abrir" href="#" target="_blank" rel="noopener">Abrir en pestaña completa ↗</a>
-</header>
-<iframe id="app" title="Gestor de Locadores" allow="clipboard-write"></iframe>
+<header>Gestor de Locadores · ATU</header>
+<main>
+  <p>Abriendo el Gestor de Locadores…</p>
+  <a class="btn" id="ir" href="https://script.google.com/macros/s/AKfycbzW2XeCcNHCo4SKhwMquBaGS4tDa7Ke_NUdbMja3yOd78sxNs5_OXsF3tQ6UZzt5-Nf/exec">Entrar al aplicativo</a>
+  <p class="s">Si no se abre solo, pulsa el botón. Ingresa con la cuenta de Google a la que se compartió la base de datos.</p>
+</main>
 <script>
-  // Dirección de la aplicación web publicada con Google Apps Script
-  var APP_URL = "https://script.google.com/macros/s/AKfycbzW2XeCcNHCo4SKhwMquBaGS4tDa7Ke_NUdbMja3yOd78sxNs5_OXsF3tQ6UZzt5-Nf/exec";
-  document.getElementById('app').src = APP_URL;
-  document.getElementById('abrir').href = APP_URL;
+  var APP_URL = document.getElementById('ir').href;
+  try { window.location.replace(APP_URL); } catch (e) {}
 </script>
 </body>
 </html>
