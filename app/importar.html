@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Migrar a Supabase · Gestor de Locadores</title>
+<style>
+  :root{--pri:#1f5f6b;--line:#dfe5e8;--bg:#f4f6f7;--ink:#17252b;--mute:#5b6b6f;--ok:#3d7d4f;--bad:#b0414c}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+  header{background:#13363d;color:#e8f1f3;padding:12px 16px;font-weight:700}
+  main{max-width:760px;margin:24px auto;padding:0 16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:14px}
+  button{font:inherit;padding:9px 16px;border-radius:8px;border:1px solid #c9d3d6;background:#fff;cursor:pointer;font-weight:600}
+  button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+  button:disabled{opacity:.5;cursor:default}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+  td.n{text-align:right;font-variant-numeric:tabular-nums}
+  #log{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0f2a30;color:#d6eef2;border-radius:8px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap}
+  .muted{color:var(--mute)} .ok{color:var(--ok);font-weight:600} .bad{color:var(--bad);font-weight:600}
+</style>
+</head>
+<body>
+<header>Gestor de Locadores · Migración desde Google Sheets a Supabase</header>
+<main>
+  <div class="card" id="cSesion">Verificando sesión…</div>
+  <div class="card" id="cArchivo" style="display:none">
+    <b>1. Excel del repositorio</b>
+    <p class="muted">Abre la hoja <i>"Repositorio - Base de Datos Locadores ATU"</i> en Google Sheets → <b>Archivo → Descargar → Microsoft Excel (.xlsx)</b>, y elige aquí ese archivo.</p>
+    <input type="file" id="fi" accept=".xlsx">
+    <div id="resumen" style="margin-top:12px"></div>
+  </div>
+  <div class="card" id="cImportar" style="display:none">
+    <b>2. Copiar a Supabase</b>
+    <p class="muted">Reemplaza lo que haya en Supabase con los datos de este Excel (locadores, techos, historial, eliminados y referencia del resumen). Google Sheets no se modifica.</p>
+    <button class="pri" id="bImp">Copiar a Supabase</button>
+    <div id="log" style="margin-top:12px;display:none"></div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+var sb = supabase.createClient('https://gqjhayjilmyqwavmwztg.supabase.co', 'sb_publishable_mt7fiyz53XnvwUDn2Evfcg_2cyXaOKz',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'pkce'}});
+var KEYS = ['_id','n','organo','uo','nombre','reemplazo','certificado','entregables','descripcion','tipo','tipo2','dni','montoAnt','montoAct','grado','detalle','excepcion',
+  'campo','operativo','mixto','administrativo','asistente','especialista','coordinador','obs','_upd','_by',
+  'm01','m02','m03','m04','m05','m06','m07','m08','m09','m10','m11','m12','prevision','prevNum','prevMonto','prevAnios',
+  'situacion','sitFecha','sitSustento','tipoDoc','ruc','osNum','osInicio','osFin','osPlazo','osEstado'];
+var BASE_N = 27, P = null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function log(t,cls){var l=$('log');l.style.display='block';l.innerHTML+=(cls?'<span class="'+cls+'">':'')+esc(t)+(cls?'</span>':'')+'\n';l.scrollTop=l.scrollHeight}
+function api(fn,args){return sb.rpc('locadores_api',{p:{fn:fn,args:args}}).then(function(r){if(r.error)throw new Error(r.error.message);return r.data})}
+
+async function sesion(){
+  var s=(await sb.auth.getSession()).data.session, c=$('cSesion');
+  if(!s){c.innerHTML='Ingresa con tu cuenta de Google (administrador).<br><br><button class="pri" id="bG">Ingresar con Google</button>';
+    $('bG').onclick=function(){sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:'select_account'}}})};return}
+  try{var d=await api('getData',[null]);
+    if(d.rol!=='admin'){c.innerHTML='<span class="bad">Tu cuenta ('+esc(s.user.email)+') no es administradora.</span> Solo un administrador puede migrar.';return}
+    c.innerHTML='Sesión: <b>'+esc(s.user.email)+'</b> (administrador). En Supabase hay hoy <b>'+d.rows.length+'</b> locadores del año '+d.anio+'. <button id="bS" style="margin-left:8px">Salir</button>';
+    $('bS').onclick=function(){sb.auth.signOut().then(function(){location.reload()})};
+    $('cArchivo').style.display='block';
+  }catch(e){c.innerHTML='<span class="bad">'+esc(e.message)+'</span><br><br><button id="bS">Usar otra cuenta</button>';$('bS').onclick=function(){sb.auth.signOut().then(function(){location.reload()})}}
+}
+sb.auth.onAuthStateChange(function(ev){if(ev==='SIGNED_IN')sesion()});
+sesion();
+
+function filas(ws,raw){return XLSX.utils.sheet_to_json(ws,{header:1,raw:!!raw,defval:'',dateNF:'dd/mm/yyyy hh:mm:ss'})}
+$('fi').onchange=function(){
+  var f=this.files[0];if(!f)return;var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var wb=XLSX.read(new Uint8Array(rd.result),{type:'array',cellDates:false});
+      P={anios:{},hist:[],bajas:[]};
+      wb.SheetNames.forEach(function(nm){
+        var ws=wb.Sheets[nm],m;
+        if((m=/^BASE (\d{4})$/.exec(nm))){var y=+m[1];var R=filas(ws).slice(1).filter(function(r){return String(r[0]).trim()!==''&&String(r[4]).trim()!==''});
+          (P.anios[y]=P.anios[y]||{}).rows=R.map(function(r){var o={};KEYS.forEach(function(k,i){o[k]=String(r[i]==null?'':r[i]).trim()});return o})}
+        else if((m=/^TECHOS (\d{4})$/.exec(nm))){var y2=+m[1];(P.anios[y2]=P.anios[y2]||{}).techos=filas(ws,true).slice(1).filter(function(r){return r[1]!==''||r[2]!==''}).map(function(r){return [String(r[0]),String(r[1]).trim(),String(r[2]).trim(),Number(r[3])||0]})}
+        else if((m=/^RESUMEN REF (\d{4})$/.exec(nm))){var y3=+m[1];var V=filas(ws,true);var heads=(V[1]||[]).slice(2).map(function(x){return String(x).trim()});while(heads.length&&!heads[heads.length-1])heads.pop();
+          (P.anios[y3]=P.anios[y3]||{}).ref={titulo:String((V[0]||[])[0]||''),heads:heads,rows:V.slice(2).filter(function(r){return String(r[1]).trim()!==''}).map(function(r){return [String(r[0]).trim().toUpperCase()==='O'?'O':'U',String(r[1]).trim()].concat(r.slice(2,2+heads.length).map(function(x){return x===''?null:(isFinite(+x)?+x:null)}))})}}
+        else if(nm==='HISTORIAL'){P.hist=filas(ws).slice(1).filter(function(r){return r.some(function(v){return String(v).trim()!==''})}).map(function(r){var a=r.slice(0,12).map(function(v){return String(v==null?'':v)});while(a.length<12)a.push('');return a})}
+        else if(nm==='BAJAS'){P.bajas=filas(ws).slice(1).filter(function(r){return String(r[4]).trim()!==''}).map(function(r){var o={};
+          for(var i=0;i<BASE_N;i++){if(String(r[i]).trim()!=='')o[KEYS[i]]=String(r[i]).trim()}
+          for(var j=BASE_N;j<KEYS.length;j++){var v=r[j+3];if(v!=null&&String(v).trim()!=='')o[KEYS[j]]=String(v).trim()}
+          if(o._id)o._id=Number(o._id)||o._id;['montoAnt','montoAct','prevMonto'].forEach(function(k){if(o[k]!=null){var n=Number(String(o[k]).replace(/,/g,''));o[k]=isFinite(n)?n:null}});
+          return {anio:String(r[BASE_N+2]||'').trim(),fecha:String(r[BASE_N]||''),por:String(r[BASE_N+1]||''),datos:o}})}
+      });
+      var ys=Object.keys(P.anios).sort();
+      if(!ys.length)throw new Error('No se encontró ninguna hoja "BASE <año>" en el archivo.');
+      $('resumen').innerHTML='<table><tr><th>Año</th><th class="n">Locadores</th><th class="n">Techos</th><th>Referencia del resumen</th></tr>'+
+        ys.map(function(y){var a=P.anios[y];return '<tr><td>'+y+'</td><td class="n">'+(a.rows||[]).length+'</td><td class="n">'+(a.techos||[]).length+'</td><td>'+(a.ref?esc(a.ref.titulo)+' ('+a.ref.rows.length+' filas)':'—')+'</td></tr>'}).join('')+
+        '</table><p>Historial: <b>'+P.hist.length+'</b> cambios · Eliminados: <b>'+P.bajas.length+'</b></p>';
+      $('cImportar').style.display='block';
+    }catch(e){$('resumen').innerHTML='<span class="bad">'+esc(e.message)+'</span>'}
+  };
+  rd.readAsArrayBuffer(f);
+};
+
+async function porPartes(tipo,rows,tam,extra){for(var i=0;i<rows.length;i+=tam){var part=rows.slice(i,i+tam);
+  await api('importar',[Object.assign({tipo:tipo,rows:part,reset:i===0},extra||{})]);log('  '+tipo+': '+Math.min(i+tam,rows.length)+' de '+rows.length)}
+  if(!rows.length)await api('importar',[Object.assign({tipo:tipo,rows:[],reset:true},extra||{})])}
+$('bImp').onclick=async function(){
+  if(!P)return;var b=this;b.disabled=true;$('log').innerHTML='';
+  try{
+    for(var y of Object.keys(P.anios).sort()){var a=P.anios[y];log('Año '+y);
+      await porPartes('locador',a.rows||[],250,{anio:+y});
+      if(a.techos){await api('importar',[{tipo:'techo',anio:+y,rows:a.techos}]);log('  techos: '+a.techos.length)}
+      if(a.ref){await api('importar',[{tipo:'ref',anio:+y,ref:a.ref}]);log('  referencia del resumen: '+a.ref.rows.length+' filas')}}
+    log('Historial');await porPartes('historial',P.hist,1500);
+    log('Eliminados');await porPartes('baja',P.bajas,200);
+    await api('importar',[{tipo:'fin'}]);
+    var d=await api('getData',[null]);
+    log('Listo. En Supabase hay '+d.rows.length+' locadores del año '+d.anio+'.','ok');
+    log('Abre el aplicativo nuevo para revisarlo.','ok');
+  }catch(e){log('Error: '+e.message,'bad');log('No pasa nada: puedes volver a pulsar "Copiar a Supabase"; reemplaza todo de nuevo.')}
+  b.disabled=false};
+</script>
+</body>
+</html>
