@@ -30,6 +30,7 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - **Meses financiados** (= con certificado): 12 columnas al final de la hoja (`FINANCIADO ENE` … `FINANCIADO DIC`), marcadas con X. En la ficha se marcan con un clic (botones "Todo el año", "Del mes actual a DIC", "Según Certificado"). La edición masiva permite marcar, quitar o reemplazar meses, o tomarlos de la columna Certificado.
 - **Llenado inicial**: en Calidad de datos → "Sin meses financiados registrados" → **Completar desde la columna "Certificado"** (lee textos como `SI (AGO-DIC)`, `SI (OCT - NOV)`, `SI (Set)`). Los "SI" sin meses se marcan a mano.
 - **Previsión presupuestal** (años siguientes): `PREVISIÓN PRESUPUESTAL` (SI / NO / EN TRÁMITE), `N° PREVISIÓN`, `MONTO PREVISTO`, `AÑOS DE LA PREVISIÓN`.
+- En **Cruce con Excel → Marcar previsión…** se registra ¿Cuenta con previsión? (SI / NO / EN TRÁMITE) en todos los locadores encontrados del archivo (eligiendo qué tipos de coincidencia aplicar y, si se quiere, solo a los que aún no tienen dato). No cambia la condición de activo o inactivo.
 - La app calcula el monto financiado en el año, los meses pendientes de certificar (del mes actual a diciembre) y su costo, con filtros, alertas, KPIs en el Panel y la tabla "Financiamiento y previsión presupuestal por área" en Consolidados (exportable a Excel).
 - Al crear un año nuevo se puede empezar sin meses financiados.
 
