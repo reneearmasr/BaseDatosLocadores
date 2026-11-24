@@ -61,6 +61,8 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 - Se cargan con **Cruce con Excel → Actualizar datos desde el archivo…** (el modal reconoce las columnas por su encabezado).
 - Base de datos: columna "Orden de servicio" con el N° y la fecha de vencimiento (verde, ámbar ≤15 días, rojo vencida). Calidad de datos: "Orden vencida o por vencer" y "Sin orden de servicio".
 
+- En **Cruce con Excel → Actualizar datos desde el archivo…** también se completan **Certificado (SI/NO)** (desde una columna o con el mismo valor para todos) y los **meses financiados**: según las fechas de inicio y fin de la orden, según un texto tipo "SI (AGO-DIC)" del archivo o marcando meses fijos; se pueden agregar a los que ya tiene o reemplazarlos. N° de orden y N° de entregables se toman de sus columnas (entregables también admite un valor fijo).
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
