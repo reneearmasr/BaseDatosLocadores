@@ -78,6 +78,8 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 
 Solo pueden usarlo las personas con la hoja de Google compartida como **Editor**. Cada cambio queda registrado con el correo de quien lo hizo.
 
+- **Usuarios (versión Supabase):** los administradores ven en el menú la sección **Usuarios**, donde pueden agregar una cuenta de Google con su rol (Administrador, Editor o Solo consulta), cambiar el rol o el nombre, y desactivar o reactivar el acceso. Desactivar no borra el historial.
+
 ## Actualizar el aplicativo
 
 1. Copiar `apps-script/Codigo.gs` e `apps-script/Index.html` en el proyecto de Apps Script de la hoja.
