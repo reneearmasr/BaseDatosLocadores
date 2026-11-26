@@ -63,6 +63,8 @@ El código fuente del asistente está en `src/asistente.js`; ya va incluido dent
 
 - En **Cruce con Excel → Actualizar datos desde el archivo…** también se completan **Certificado (SI/NO)** (desde una columna o con el mismo valor para todos) y los **meses financiados**: según las fechas de inicio y fin de la orden, según un texto tipo "SI (AGO-DIC)" del archivo o marcando meses fijos; se pueden agregar a los que ya tiene o reemplazarlos. N° de orden y N° de entregables se toman de sus columnas (entregables también admite un valor fijo).
 
+- **Actualizar datos desde el archivo…** permite copiar **cualquier dato** de la base desde una columna del archivo o con un mismo valor para todos, agrupados en: Identificación, Orden de servicio y certificado (más meses financiados), Previsión presupuestal (SI/NO/EN TRÁMITE, N°, monto, años), Situación, Ubicación-servicio-montos y Perfil-observaciones. Si se cambian situación, montos u órgano/unidad, se muestra un aviso antes de confirmar.
+
 ## Multianual
 
 - Cada año tiene sus propias hojas en el repositorio: `BASE 2026`, `TECHOS 2026`, `BASE 2027`, `TECHOS 2027`… El `HISTORIAL` y las `BAJAS` son comunes y llevan la columna `AÑO`.
